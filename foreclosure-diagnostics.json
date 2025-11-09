@@ -1,0 +1,122 @@
+{
+  "foreclosureTracker": {
+    "status": "needs_fix",
+    "lastWorkingVersion": "1.7.3",
+    "diagnosticTests": [
+      {
+        "testName": "API Connection Test",
+        "command": "curl -s -o /dev/null -w '%{http_code}' -H 'X-RapidAPI-Key: $RAPIDAPI_KEY' 'https://foreclosureapi.p.rapidapi.com/status'",
+        "expected": 200,
+        "fix": {
+          "failure": [
+            "Check RapidAPI subscription at https://rapidapi.com/hub",
+            "Verify RAPIDAPI_KEY in Replit Secrets",
+            "Rotate API key if compromised"
+          ]
+        }
+      },
+      {
+        "testName": "Database Connectivity",
+        "command": "psql $DB_URL -c 'SELECT COUNT(*) FROM foreclosure_listings'",
+        "expected": ">0",
+        "fix": {
+          "failure": [
+            "Check DB_URL connection string",
+            "Run migrations: npm run db:migrate",
+            "Restart PostgreSQL: sudo service postgresql restart"
+          ]
+        }
+      },
+      {
+        "testName": "Core Functionality Test",
+        "endpoint": "/api/v1/foreclosures",
+        "method": "GET",
+        "params": {"state": "FL", "status": "pre-foreclosure"},
+        "expected": {
+          "status": 200,
+          "minResults": 5,
+          "requiredFields": ["property_id", "auction_date", "opening_bid"]
+        },
+        "fix": {
+          "statusFailure": [
+            "Check server logs for errors",
+            "Verify foreclosure service is running: pm2 list"
+          ],
+          "minResultsFailure": [
+            "Check API provider for data coverage in Florida",
+            "Adjust search parameters in foreclosure-scraper.js"
+          ],
+          "missingFields": [
+            "Update database schema: ALTER TABLE foreclosure_listings ADD COLUMN IF NOT EXISTS <field>",
+            "Modify API response formatter in foreclosureController.ts"
+          ]
+        }
+      }
+    ],
+    "commonErrors": {
+      "ECONNREFUSED": {
+        "cause": "API provider blocking requests",
+        "solution": "Add proxy rotation in api-service.js"
+      },
+      "404_NOT_FOUND": {
+        "cause": "Outdated API endpoint",
+        "solution": "Update endpoint to '/api/v2/foreclosures/search' in config"
+      },
+      "INVALID_STATE_CODE": {
+        "cause": "New state abbreviations not supported",
+        "solution": "Update stateMapper function in utils/geo.js"
+      },
+      "DATA_STALE": {
+        "cause": "Background worker not running",
+        "solution": "Restart worker: pm2 restart foreclosure-worker"
+      }
+    },
+    "fixScripts": {
+      "refreshData": "npm run refresh-foreclosures",
+      "resetModule": "pm2 restart foreclosure-module",
+      "updateSchema": "psql $DB_URL -f sql/foreclosure_schema_update.sql",
+      "clearCache": "rm -rf .cache/foreclosure_data"
+    },
+    "configurationCheck": {
+      "requiredSettings": {
+        "foreclosure.refreshInterval": "3600",
+        "foreclosure.maxRetries": "5",
+        "foreclosure.states": "ALL",
+        "foreclosure.apiVersion": "v2"
+      },
+      "verificationCommand": "node -e 'import config from \"./config\"; console.log(JSON.stringify(config.foreclosure))'"
+    },
+    "dataSources": {
+      "primary": "RapidAPI/Foreclosure API",
+      "secondary": "ATTOM Foreclosure Feed",
+      "fallback": "County Recorder Scraper"
+    },
+    "emergencyFixProtocol": [
+      "Stop service: pm2 stop foreclosure-tracker",
+      "Backup database: pg_dump $DB_URL -t foreclosure_* > foreclosures_backup.sql",
+      "Run diagnostics: npm run test:foreclosures",
+      "Apply fixes based on diagnostic results",
+      "Clear cache: npm run clear:cache",
+      "Seed test data: npm run seed:test-foreclosures",
+      "Start service: pm2 start foreclosure-tracker"
+    ],
+    "testData": {
+      "validInput": {
+        "state": "CA",
+        "county": "Los Angeles",
+        "status": "auction",
+        "minBid": 100000
+      },
+      "expectedOutput": {
+        "status": 200,
+        "data": [{
+          "property_id": "CA-2024-18923",
+          "address": "123 Auction St, Los Angeles, CA",
+          "auction_date": "2024-08-15T14:00:00Z",
+          "opening_bid": 125000,
+          "lien_amount": 87500
+        }]
+      }
+    }
+  }
+}

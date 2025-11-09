@@ -1,0 +1,185 @@
+{
+  "foreclosureTracker": {
+    "status": "operational",
+    "lastWorkingVersion": "3.0.0",
+    "diagnosticTests": [
+      {
+        "testName": "API Connection Test",
+        "endpoint": "/api/foreclosures",
+        "method": "GET",
+        "params": {"zipCode": "90210", "limit": 3},
+        "expected": {
+          "status": 200,
+          "minResults": 1,
+          "requiredFields": ["id", "address", "estimatedValue"]
+        },
+        "fix": {
+          "failure": [
+            "Check RapidAPI subscription status",
+            "Verify RAPIDAPI_KEY in Replit Secrets",
+            "Test ATTOM_API_KEY fallback configuration"
+          ]
+        }
+      },
+      {
+        "testName": "Database Connectivity",
+        "endpoint": "/api/v3/debug/health",
+        "method": "GET",
+        "expected": {
+          "status": 200,
+          "requiredFields": ["services.database"]
+        },
+        "fix": {
+          "failure": [
+            "Check DATABASE_URL connection string",
+            "Verify PostgreSQL service status",
+            "Restart application workflow"
+          ]
+        }
+      },
+      {
+        "testName": "Core Functionality Test",
+        "endpoint": "/api/foreclosures",
+        "method": "GET",
+        "params": {"zipCode": "33460", "state": "FL"},
+        "expected": {
+          "status": 200,
+          "minResults": 5,
+          "requiredFields": ["id", "address", "estimatedValue", "stage"]
+        },
+        "fix": {
+          "statusFailure": [
+            "Check server logs for foreclosure service errors",
+            "Verify unlimited data access is functioning"
+          ],
+          "minResultsFailure": [
+            "Check API provider for Florida market coverage",
+            "Adjust ZIP code search parameters"
+          ],
+          "missingFields": [
+            "Update foreclosure data mapping in PropertyDataProvider",
+            "Verify ATTOM API response structure"
+          ]
+        }
+      },
+      {
+        "testName": "Performance Benchmark",
+        "endpoint": "/api/foreclosures",
+        "method": "GET",
+        "params": {"zipCode": "90210", "limit": 20},
+        "expected": {
+          "status": 200,
+          "maxResponseTime": 15000,
+          "minResults": 10
+        },
+        "fix": {
+          "timeoutFailure": [
+            "Optimize foreclosure data loading pagination",
+            "Check network connectivity to external APIs",
+            "Increase timeout limits for large datasets"
+          ]
+        }
+      },
+      {
+        "testName": "Multi-State Coverage",
+        "endpoint": "/api/foreclosures",
+        "method": "GET",
+        "params": {"zipCode": "96817", "state": "HI"},
+        "expected": {
+          "status": 200,
+          "minResults": 1
+        },
+        "fix": {
+          "failure": [
+            "Verify Hawaii market data availability",
+            "Check international/remote state API coverage",
+            "Ensure all 50 states are supported"
+          ]
+        }
+      }
+    ],
+    "commonErrors": {
+      "ECONNREFUSED": {
+        "cause": "External API provider blocking requests",
+        "solution": "Implement API key rotation in foreclosure service"
+      },
+      "404_NOT_FOUND": {
+        "cause": "Foreclosure endpoint not available",
+        "solution": "Verify /api/foreclosures route is properly registered"
+      },
+      "TIMEOUT_ERROR": {
+        "cause": "Large dataset loading taking too long",
+        "solution": "Optimize pagination and implement streaming responses"
+      },
+      "DATA_STALE": {
+        "cause": "Foreclosure data not refreshing",
+        "solution": "Check unlimited access system and property loading"
+      },
+      "INVALID_ZIP_CODE": {
+        "cause": "ZIP code format not recognized",
+        "solution": "Update ZIP code validation in foreclosure service"
+      }
+    },
+    "fixScripts": {
+      "refreshData": "node platform-debugger.js --test=foreclosureSystem",
+      "resetModule": "restart workflow: Start application",
+      "clearCache": "Clear browser cache and restart debugging",
+      "validateConfig": "node platform-debugger.js --env"
+    },
+    "configurationCheck": {
+      "requiredSettings": {
+        "foreclosure.refreshInterval": "auto",
+        "foreclosure.maxRetries": "3",
+        "foreclosure.states": "ALL_50_STATES",
+        "foreclosure.apiVersion": "v3",
+        "foreclosure.unlimitedAccess": "true"
+      },
+      "verificationCommand": "node platform-debugger.js --diagnose"
+    },
+    "dataSources": {
+      "primary": "ATTOM Data API",
+      "secondary": "RapidAPI Foreclosure Services", 
+      "fallback": "PropertyDataProvider with market-based generation"
+    },
+    "emergencyFixProtocol": [
+      "node platform-debugger.js --diagnose",
+      "node platform-debugger.js --env", 
+      "node platform-debugger.js --fix=foreclosureSystem",
+      "node platform-debugger.js --deps",
+      "echo 'Manual: Restart application workflow if needed'",
+      "echo 'Manual: Validate unlimited access system functionality'"
+    ],
+    "testData": {
+      "validInputs": [
+        {
+          "zipCode": "90210",
+          "state": "CA",
+          "expectedResults": "1000+"
+        },
+        {
+          "zipCode": "33460", 
+          "state": "FL",
+          "expectedResults": "500+"
+        },
+        {
+          "zipCode": "96817",
+          "state": "HI", 
+          "expectedResults": "100+"
+        }
+      ],
+      "expectedOutput": {
+        "status": 200,
+        "dataStructure": {
+          "foreclosures": "array",
+          "properties": ["id", "address", "estimatedValue", "stage", "auctionDate"]
+        }
+      }
+    },
+    "performanceTargets": {
+      "responseTime": "<15000ms",
+      "dataCompleteness": "100%",
+      "uptime": ">99%",
+      "memoryUsage": "<200MB"
+    }
+  }
+}
