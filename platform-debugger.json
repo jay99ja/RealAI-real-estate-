@@ -1,0 +1,201 @@
+{
+  "platform": "AI Real Estate Wholesale Platform",
+  "version": "3.0.0",
+  "debugMode": true,
+  "autoFixEnabled": true,
+  "featureTests": {
+    "propertyIntelligence": {
+      "testCases": [
+        {
+          "description": "Test US property search",
+          "method": "GET",
+          "endpoint": "/api/properties?zipCode=90210",
+          "expected": {"status": 200, "minProperties": 100}
+        },
+        {
+          "description": "Test international search (Germany)",
+          "method": "POST",
+          "endpoint": "/api/v1/properties/search",
+          "payload": {"country": "DE", "region": "Berlin", "minPrice": 200000, "currency": "EUR"},
+          "expected": {"status": 200, "minProperties": 10}
+        },
+        {
+          "description": "Test property detail lookup",
+          "method": "GET",
+          "endpoint": "/api/properties/111904",
+          "expected": {"status": 200, "contains": ["address", "price"]}
+        }
+      ],
+      "commonErrors": {
+        "no_results": {
+          "diagnosis": "Missing API key or data source configuration",
+          "fix": "Check ATTOM_API_KEY and GLOBAL_PROPERTY_KEY in environment"
+        },
+        "invalid_zip": {
+          "diagnosis": "ZIP code validation failure",
+          "fix": "Update postal code regex in validation.ts"
+        },
+        "timeout": {
+          "diagnosis": "API response timeout",
+          "fix": "Increase timeout values in fetch configuration"
+        }
+      }
+    },
+    "aiAppraisal": {
+      "testCases": [
+        {
+          "description": "Generate BPO report",
+          "method": "POST",
+          "endpoint": "/api/properties/appraise",
+          "payload": {"address": "1209 Auld Ln", "zipCode": "90210", "sqft": 2500},
+          "expected": {"status": 200, "contains": ["appraisal", "marketValue"]}
+        },
+        {
+          "description": "Test lien analysis",
+          "method": "POST",
+          "endpoint": "/api/properties/lien-analysis",
+          "payload": {"address": "1209 Auld Ln", "zipCode": "90210"},
+          "expected": {"status": 200, "contains": ["liens", "riskLevel"]}
+        }
+      ],
+      "commonErrors": {
+        "timeout": {
+          "diagnosis": "AI model taking too long to respond",
+          "fix": "Increase timeout in appraisal-service.ts"
+        },
+        "invalid_input": {
+          "diagnosis": "Missing property characteristics",
+          "fix": "Add required fields to property schema"
+        }
+      }
+    },
+    "foreclosureSystem": {
+      "testCases": [
+        {
+          "description": "Retrieve foreclosure listings",
+          "method": "GET",
+          "endpoint": "/api/foreclosures?state=CA&zipCode=90210",
+          "expected": {"status": 200, "minListings": 5}
+        }
+      ],
+      "commonErrors": {
+        "empty_response": {
+          "diagnosis": "Foreclosure API connection issue",
+          "fix": "Verify RapidAPI subscription status"
+        },
+        "invalid_state": {
+          "diagnosis": "State code not recognized",
+          "fix": "Update state validation map"
+        }
+      }
+    },
+    "leadManagement": {
+      "testCases": [
+        {
+          "description": "Generate new leads",
+          "method": "GET",
+          "endpoint": "/api/lead-contacts",
+          "expected": {"status": 200}
+        }
+      ],
+      "commonErrors": {
+        "skip_trace_failure": {
+          "diagnosis": "Contact info lookup failed",
+          "fix": "Check TruePeopleSearch API credits"
+        }
+      }
+    }
+  },
+  "dependencyChecks": {
+    "apiServices": [
+      {
+        "name": "Attom Data API",
+        "statusCheck": "curl -s -o /dev/null -w '%{http_code}' https://api.attomdata.com/health",
+        "expectedStatus": "200"
+      },
+      {
+        "name": "Platform Health API",
+        "statusCheck": "curl -s -o /dev/null -w '%{http_code}' http://localhost:5000/api/v3/debug/health",
+        "expectedStatus": "200"
+      }
+    ],
+    "databaseChecks": [
+      {
+        "description": "PostgreSQL connection",
+        "command": "curl -s http://localhost:5000/api/v3/debug/health | grep 'connected'"
+      }
+    ]
+  },
+  "autoFixProcedures": {
+    "apiConnectionFailure": {
+      "steps": [
+        "Verify API keys in Replit Secrets",
+        "Check API provider dashboard for usage limits",
+        "Test endpoint connectivity with curl",
+        "Rotate API key if compromised",
+        "Restart application services"
+      ]
+    },
+    "databaseIssues": {
+      "steps": [
+        "Check DATABASE_URL connection string format",
+        "Verify PostgreSQL server status",
+        "Test database connectivity with health endpoint",
+        "Clear connection pool if needed",
+        "Restart database service"
+      ]
+    },
+    "performanceProblems": {
+      "steps": [
+        "Check memory usage and clear cache",
+        "Verify Node.js process health",
+        "Optimize database queries",
+        "Clear temporary files",
+        "Restart application if needed"
+      ]
+    }
+  },
+  "continuousTesting": {
+    "scheduledTests": {
+      "interval": "hourly",
+      "testsToRun": ["propertyIntelligence", "aiAppraisal"]
+    },
+    "performanceMonitoring": {
+      "endpoints": [
+        "/api/properties/search",
+        "/api/properties/appraise",
+        "/api/foreclosures"
+      ],
+      "thresholds": {
+        "maxResponseTime": 5000,
+        "errorRate": 0.1
+      }
+    }
+  },
+  "envValidation": {
+    "requiredVariables": [
+      "DATABASE_URL",
+      "ATTOM_API_KEY",
+      "RAPIDAPI_KEY",
+      "RAPIDAPI_KEY_2",
+      "GEODB_API_KEY"
+    ],
+    "optionalVariables": [
+      "NODE_ENV",
+      "SESSION_SECRET",
+      "REPLIT_DOMAINS"
+    ]
+  },
+  "emergencyRecovery": {
+    "backupEndpoints": [
+      "http://localhost:5000/api/v3/debug/health",
+      "http://localhost:5000/api/auth/user"
+    ],
+    "rollbackProcedure": [
+      "Stop current processes",
+      "Restart workflow: Start application", 
+      "Verify health endpoints",
+      "Test core functionality"
+    ]
+  }
+}
